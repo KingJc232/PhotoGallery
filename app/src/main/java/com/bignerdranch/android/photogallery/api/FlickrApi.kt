@@ -35,6 +35,6 @@ interface FlickrApi
                 "&nojsoncallback=1" +
                 "&extras=url_s"
     )
-    fun fetchPhotos(): Call<String>
+    fun fetchPhotos(): Call<FlickrResponse>
 
 }

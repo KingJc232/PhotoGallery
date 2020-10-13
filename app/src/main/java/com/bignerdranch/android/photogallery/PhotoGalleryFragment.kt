@@ -5,9 +5,11 @@ import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.TextView
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.Observer
+import androidx.lifecycle.ViewModelProviders
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 
@@ -19,6 +21,8 @@ class PhotoGalleryFragment : Fragment() {
     //Will be used to reference the recycler view in the layout
     private lateinit var photoRecyclerView: RecyclerView
 
+    //Will be used to reference the ViewModel Object that  Stores the Gallery Item Data
+    private lateinit var photoGalleryViewModel: PhotoGalleryViewModel
 
     //Context is the Activity that is hosting the fragment remember can do Ctrl + Click to see implementation
     //Method Used to initialize Reference To the layout since we will inflate it in this method
@@ -29,16 +33,9 @@ class PhotoGalleryFragment : Fragment() {
     ): View?
     {
 
-        /**Using a FlcikrFetchr To request a photo from the network */
-        val flickrLiveData: LiveData<String> = FlickrFetchr().fetchPhotos()
+        /**Using a ViewModel To request and store a photo from the network */
+        this.photoGalleryViewModel = ViewModelProviders.of(this).get(PhotoGalleryViewModel::class.java)
 
-        //Using a Observer so when the LiveData is Recieved it will
-        flickrLiveData.observe(
-            this,
-            Observer {responseString ->
-                Log.d(TAG, "Response Received: $responseString")
-            }
-        )
 
         //Inflating the Fragment Layout
         val view = inflater.inflate(R.layout.fragment_photo_gallery, container, false)
@@ -54,12 +51,62 @@ class PhotoGalleryFragment : Fragment() {
         return view
     }
 
+
+    /**
+     * Updating PhotoGalleryFragment to observe PhotoGalleryViewModel's Live Data
+     * Once the Fragments view is created
+     * Eventually We will use these results to update our recycler view contents in Response to Data Changes
+     * */
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?)
+    {
+        super.onViewCreated(view, savedInstanceState)
+
+        /**
+         * Passing viewLifeCycleOwner as the LifecycleOwner parameter to LiveData.observe(..) Ensures that the LiveData
+         * Object will remove your observer when the fragment's view is destroyed
+         * */
+        this.photoGalleryViewModel.galleryItemLiveData.observe(
+            viewLifecycleOwner,
+            Observer {galleryItems ->
+
+                /**Adding Code to Attach The RecyclerViews Adapter with updated gallery item data when the live data observer callback fires*/
+                this.photoRecyclerView.adapter = PhotoAdapter(galleryItems)
+            })
+
+    }
+
+
     //Static Method Used to Create a Instance of This class
     companion object
     {
         fun newInstance() = PhotoGalleryFragment()
     }
 
+
+    /**Every Recycler View Needs a Holder and a Adapter Class*/
+
+    private class PhotoHolder(itemTextView: TextView) : RecyclerView.ViewHolder(itemTextView)
+    {
+        val bindTitle: (CharSequence) -> Unit = itemTextView::setText
+    }
+
+    /**Adapter used to provide PhotoHolders as needed based on a list of GalleryItems*/
+    private class PhotoAdapter(private val galleryItems: List<GalleryItem>) : RecyclerView.Adapter<PhotoHolder>()
+    {
+        override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): PhotoHolder {
+
+            val textView = TextView(parent.context)
+            return PhotoHolder(textView)
+        }
+
+        override fun getItemCount(): Int = galleryItems.size
+
+        override fun onBindViewHolder(holder: PhotoHolder, position: Int) {
+
+            val galleryItem = galleryItems[position]
+            holder.bindTitle(galleryItem.title)
+        }
+    }
 
 }
 

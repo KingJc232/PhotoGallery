@@ -4,10 +4,13 @@ import android.util.Log
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import com.bignerdranch.android.photogallery.api.FlickrApi
+import com.bignerdranch.android.photogallery.api.FlickrResponse
+import com.bignerdranch.android.photogallery.api.PhotoResponse
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
 import retrofit2.Retrofit
+import retrofit2.converter.gson.GsonConverterFactory
 import retrofit2.converter.scalars.ScalarsConverterFactory
 
 
@@ -39,7 +42,8 @@ class FlickrFetchr {
 
         val retrofit: Retrofit = Retrofit.Builder()
             .baseUrl("https://api.flickr.com/")
-            .addConverterFactory(ScalarsConverterFactory.create())
+                //Now using a Gson Converter Instead of a Scalar Converter
+            .addConverterFactory(GsonConverterFactory.create())
             .build()
 
 
@@ -50,33 +54,43 @@ class FlickrFetchr {
     }
 
     /**Enqueues The Network Request and wraps the result in LiveData */
-    fun fetchPhotos(): LiveData<String>
+    fun fetchPhotos(): LiveData<List<GalleryItem>>
     {
         //Used to Save the response.body()
         /**Which when the Running Request on the Background Thread is Complete ,
          * Retrofit will store it in response.body() */
-        val responseLiveData: MutableLiveData<String> = MutableLiveData()
+        val responseLiveData: MutableLiveData<List<GalleryItem>> = MutableLiveData()
 
         /**Now we are going to execute a web request and log the results
          * Using the method we defined in the Interface fetchContents (RetroFit Will create the implementation and return the request
          * As well as convert it to a string type since we are using Squares Scalar Converter
          * */
-        val flickrRequest: Call<String> = flickrApi.fetchPhotos()
+        val flickrRequest: Call<FlickrResponse> = flickrApi.fetchPhotos()
 
         /**Using a Kotlin anonymous Class To determine when a Failure or a response was received using Log class
          * Call.enqueue() executes the web request represented by the Call object.
          * It Executes the request on a background thread
          * */
-        flickrRequest.enqueue(object : Callback<String> {
-            override fun onFailure(call: Call<String>, t: Throwable) {
+        flickrRequest.enqueue(object : Callback<FlickrResponse> {
+            override fun onFailure(call: Call<FlickrResponse>, t: Throwable) {
                 Log.e(TAG,"Failed To Fetch Photos", t)
             }
 
-            override fun onResponse(call: Call<String>, response: Response<String>) {
+            override fun onResponse(call: Call<FlickrResponse>, response: Response<FlickrResponse>) {
                 Log.d(TAG, "Response Received: ${response.body()}")
-                responseLiveData.value = response.body()
-            }
 
+                val flickrResponse: FlickrResponse? = response.body()
+
+                val photoResponse: PhotoResponse? = flickrResponse?.photos
+
+                //Fliters out gallery items with blank URL values using filter Not
+                var galleryItems: List<GalleryItem> = photoResponse?.galleryItems ?:
+                        mutableListOf()
+                    galleryItems = galleryItems.filterNot {
+                        it.url.isBlank()
+                    }
+                responseLiveData.value = galleryItems
+            }
         })
 
         return responseLiveData //Returning the Live Data
