@@ -1,11 +1,15 @@
 package com.bignerdranch.android.photogallery
 
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.util.Log
+import androidx.annotation.WorkerThread
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import com.bignerdranch.android.photogallery.api.FlickrApi
 import com.bignerdranch.android.photogallery.api.FlickrResponse
 import com.bignerdranch.android.photogallery.api.PhotoResponse
+import okhttp3.ResponseBody
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
@@ -52,6 +56,21 @@ class FlickrFetchr {
         That implements our interface on the fly*/
         flickrApi = retrofit.create(FlickrApi::class.java)
     }
+
+    /**Adding a function that fetches the Bytes from a Given URL and decodes them into a Bitmap*/
+
+    //@WorkerThread Indicates that this function should only be called on a background thread
+    //However the annotation itself does not take care of making a thread or putting the work an a background Thread
+    @WorkerThread
+    fun fetchPhoto(url: String): Bitmap?
+    {
+        //Call.execute() executes the Web request Synchronously (Since we know Networking on the Main Thread is Not Allowed)
+        val response: Response<ResponseBody> = flickrApi.fetchUrlBytes(url).execute()
+        val bitmap = response.body()?.byteStream()?.use(BitmapFactory::decodeStream)
+        Log.i(TAG, "Decoded bitmap=$bitmap from Response=$response")
+        return bitmap
+    }
+
 
     /**Enqueues The Network Request and wraps the result in LiveData */
     fun fetchPhotos(): LiveData<List<GalleryItem>>

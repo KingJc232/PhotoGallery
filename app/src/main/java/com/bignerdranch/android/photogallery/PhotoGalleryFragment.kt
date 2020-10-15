@@ -1,11 +1,17 @@
 package com.bignerdranch.android.photogallery
 
+import android.graphics.drawable.BitmapDrawable
+import android.graphics.drawable.ColorDrawable
+import android.graphics.drawable.Drawable
 import android.os.Bundle
+import android.os.Handler
 import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.ImageView
 import android.widget.TextView
+import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.Observer
@@ -24,6 +30,62 @@ class PhotoGalleryFragment : Fragment() {
     //Will be used to reference the ViewModel Object that  Stores the Gallery Item Data
     private lateinit var photoGalleryViewModel: PhotoGalleryViewModel
 
+    //Will Be used to reference our Background Thread Which downloads the Pictures From Flicker While Our Main Thread is Handling UI Stuff
+    private lateinit var thumbnailDownloader: ThumbnailDownloader<PhotoHolder>
+
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+
+        /**So that the PhotoGalleryFragment Class Matches the Users Perceived life with this fragment
+         * We are going to retain the Fragment Instance
+         * */
+        retainInstance = true
+
+
+        /**Using a ViewModel To request and store a photo from the network */
+        this.photoGalleryViewModel = ViewModelProviders.of(this).get(PhotoGalleryViewModel::class.java)
+
+        /**Initializing our Background thread and Associating it with this Fragment as its lifeCycle owner*/
+
+        //Creating a Handler and associating it with the main Thread So that  we can pass it to the Background Thread
+        //Since by default a Handler will attach itself to the Looper for the current Thread therefore the main threads looper
+        val responseHandler =  Handler()
+        //Initializing Our Background thread and with the Main Thread Handler
+        //And using a Lambda Function does the UI work with the Returning BitMaps
+        thumbnailDownloader = ThumbnailDownloader(responseHandler){
+            photoHolder, bitmap ->
+            val drawable = BitmapDrawable(resources, bitmap)
+            photoHolder.bindDrawable(drawable)
+        }
+
+
+        /**
+         * Since we added thumbnailDownloader it receives the Fragments lifecycle callbacks SO
+         * When onCreate(..) is Called ThumbnailDownloader.setup() is Called
+         * When onDestroy(..) is Called ThumbnailDownloader.tearDown() gets called
+         * */
+        lifecycle.addObserver(thumbnailDownloader.fragmentLifeCycleObserver)
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+
+        //Removing This fragment as the lifecycle owner of our background thread
+        lifecycle.removeObserver(
+            this.thumbnailDownloader.fragmentLifeCycleObserver
+        )
+
+    }
+
+    override fun onDestroyView() {
+        super.onDestroyView()
+
+        //Removing This Background Thread from observing this Fragments View Life Cycle
+        viewLifecycleOwner.lifecycle.removeObserver(thumbnailDownloader.viewLifecycleObserver)
+    }
+
+
     //Context is the Activity that is hosting the fragment remember can do Ctrl + Click to see implementation
     //Method Used to initialize Reference To the layout since we will inflate it in this method
     override fun onCreateView(
@@ -33,9 +95,8 @@ class PhotoGalleryFragment : Fragment() {
     ): View?
     {
 
-        /**Using a ViewModel To request and store a photo from the network */
-        this.photoGalleryViewModel = ViewModelProviders.of(this).get(PhotoGalleryViewModel::class.java)
-
+        /**Adding the Background Thread As an Observer to the Fragments View Since The Fragment Retains Instance the view will destroy on Rotation while the Fragment wont*/
+        viewLifecycleOwner.lifecycle.addObserver(thumbnailDownloader.viewLifecycleObserver)
 
         //Inflating the Fragment Layout
         val view = inflater.inflate(R.layout.fragment_photo_gallery, container, false)
@@ -85,49 +146,49 @@ class PhotoGalleryFragment : Fragment() {
 
     /**Every Recycler View Needs a Holder and a Adapter Class*/
 
-    private class PhotoHolder(itemTextView: TextView) : RecyclerView.ViewHolder(itemTextView)
+    /**Updating PhotoHolder to use a Image View Instead of a Text View So that we can display our pictures downloaded from Flickr*/
+    private class PhotoHolder(private val itemImageView: ImageView) : RecyclerView.ViewHolder(itemImageView)
     {
-        val bindTitle: (CharSequence) -> Unit = itemTextView::setText
+        val bindDrawable: (Drawable) -> Unit = itemImageView::setImageDrawable
     }
 
-    /**Adapter used to provide PhotoHolders as needed based on a list of GalleryItems*/
-    private class PhotoAdapter(private val galleryItems: List<GalleryItem>) : RecyclerView.Adapter<PhotoHolder>()
+    /**Adapter used to provide PhotoHolders as needed based on a list of GalleryItems
+     *
+     * Now Since PhotoHolder uses a ImageView Updating onCreateViewHolder to inflate the list_item_gallery.xml file when we create
+     * A PhotoHolder
+     *
+     * Marking it as an inner class so that we can access the members of the outer class
+     * */
+    private inner class PhotoAdapter(private val galleryItems: List<GalleryItem>) : RecyclerView.Adapter<PhotoHolder>()
     {
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): PhotoHolder {
 
-            val textView = TextView(parent.context)
-            return PhotoHolder(textView)
+            //Inflating the view used for the PhotoHolder Item and passing it to it when we create a ViewHolder object (PhotoHolder)
+            val view = layoutInflater.inflate(R.layout.list_item_gallery, parent, false) as ImageView
+            return PhotoHolder(view)
         }
 
         override fun getItemCount(): Int = galleryItems.size
 
+        /**Now we need a placeholder image for each ImageView To display until we can download an image to replace it
+         * Using bill_up_close.png as the Place Holder Image as the ImageView's Drawable
+         * */
         override fun onBindViewHolder(holder: PhotoHolder, position: Int) {
 
             val galleryItem = galleryItems[position]
-            holder.bindTitle(galleryItem.title)
+            //Using a Temp Picture until we download the pictures
+            val placeholder: Drawable = ContextCompat.getDrawable(
+                requireContext(),
+                R.drawable.bill_up_close
+            ) ?: ColorDrawable()
+            holder.bindDrawable(placeholder) //Updating the ImageView When We bind it
+
+            //Passing the target (PhotoHolder) Where the image will be placed and
+            // The GalleryItem's URL to download from
+            thumbnailDownloader.queueThumbnail(holder,galleryItem.url)
         }
     }
-
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
