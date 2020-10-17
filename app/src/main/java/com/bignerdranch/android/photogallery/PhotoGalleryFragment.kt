@@ -6,11 +6,11 @@ import android.graphics.drawable.Drawable
 import android.os.Bundle
 import android.os.Handler
 import android.util.Log
-import android.view.LayoutInflater
-import android.view.View
-import android.view.ViewGroup
+import android.view.*
 import android.widget.ImageView
+
 import android.widget.TextView
+import androidx.appcompat.widget.SearchView
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.LiveData
@@ -42,6 +42,8 @@ class PhotoGalleryFragment : Fragment() {
          * */
         retainInstance = true
 
+        /**Tells the Fragment that it has an app bar menu */
+        setHasOptionsMenu(true)
 
         /**Using a ViewModel To request and store a photo from the network */
         this.photoGalleryViewModel = ViewModelProviders.of(this).get(PhotoGalleryViewModel::class.java)
@@ -66,6 +68,65 @@ class PhotoGalleryFragment : Fragment() {
          * When onDestroy(..) is Called ThumbnailDownloader.tearDown() gets called
          * */
         lifecycle.addObserver(thumbnailDownloader.fragmentLifeCycleObserver)
+    }
+
+    override fun onOptionsItemSelected(item: MenuItem): Boolean {
+
+        return when (item.itemId)
+        {
+            R.id.menu_item_clear -> {
+                photoGalleryViewModel.fetchPhotos("")
+                true
+            }
+            else -> super.onOptionsItemSelected(item)
+        }
+
+
+    }
+
+    override fun onCreateOptionsMenu(menu: Menu, inflater: MenuInflater) {
+        super.onCreateOptionsMenu(menu, inflater)
+
+        /**Inflating the Search View Of the Menu In the App Bar */
+        inflater.inflate(R.menu.fragment_photo_gallery, menu)
+
+        /**Using SearchView.onQueryTextListener Interface to receive a call back when a  query is submitted*/
+
+        //Pulling the MenuItem representing the Search Box from the menu and storing it in SearchItem
+        val searchItem: MenuItem = menu.findItem(R.id.menu_item_search)
+        //Pulling the SearchView object from the searchItem using getActionView()
+        val searchView = searchItem.actionView as SearchView
+
+        /**
+         * Now that we have a reference to the SearchView We are able to Set a SearchView.OnQueryTextListener using setOnQueryTextListener(...)
+         * */
+
+        searchView.apply {
+            setOnQueryTextListener(object :
+                SearchView.OnQueryTextListener {
+                //Is Executed when the user submits a query
+                //The Query The User submitted is passed as input
+                override fun onQueryTextSubmit(queryText: String):
+                        Boolean {
+                    Log.d(TAG, "QueryTextSubmit: $queryText")
+
+                    //Making a Call to the viewModel Function which will request from Flickr what to Search And Update the Recycler View with the result
+                    photoGalleryViewModel.fetchPhotos(queryText)
+                    return true
+                }
+                //This is called anytime text in the SearchView text box changes
+                override fun onQueryTextChange(queryText: String):
+                        Boolean {
+                    Log.d(TAG, "QueryTextChange: $queryText")
+                    return false
+                }
+            })
+
+            setOnSearchClickListener {
+                searchView.setQuery(photoGalleryViewModel.searchTerm, false)
+            }
+        }
+
     }
 
     override fun onDestroy() {

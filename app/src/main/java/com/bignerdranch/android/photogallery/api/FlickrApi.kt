@@ -3,6 +3,7 @@ package com.bignerdranch.android.photogallery.api
 import okhttp3.ResponseBody
 import retrofit2.Call
 import retrofit2.http.GET
+import retrofit2.http.Query
 import retrofit2.http.Url
 
 /**
@@ -35,18 +36,14 @@ interface FlickrApi
      *
      **/
 
-/*    @GET("/")
-    fun fetchContents(): Call<String>*/
-
-
-    //Temporarly Hardcoding it
-    @GET(
-        "services/rest/?method=flickr.interestingness.getList" +
-                "&api_key=6669f8c3002b6638f59deb2f2aa64a1b" +
-                "&format=json" +
-                "&nojsoncallback=1" +
-                "&extras=url_s"
-    )
+    @GET("services/rest?method=flickr.interestingness.getList")
     fun fetchPhotos(): Call<FlickrResponse>
+
+    /**
+     * The @Query Annotation allows you to dynamically Append A Query Parameter appended to the URL
+     * Ex doing searchPhotos("robot") would add text=robot to the URL
+     * */
+    @GET("services/rest?method=flickr.photos.search")
+    fun searchPhotos(@Query("text") query: String) : Call<FlickrResponse>
 
 }

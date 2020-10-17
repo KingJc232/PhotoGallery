@@ -1,5 +1,6 @@
 package com.bignerdranch.android.photogallery
 
+import android.app.DownloadManager
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.util.Log
@@ -8,7 +9,9 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import com.bignerdranch.android.photogallery.api.FlickrApi
 import com.bignerdranch.android.photogallery.api.FlickrResponse
+import com.bignerdranch.android.photogallery.api.PhotoInterceptor
 import com.bignerdranch.android.photogallery.api.PhotoResponse
+import okhttp3.OkHttpClient
 import okhttp3.ResponseBody
 import retrofit2.Call
 import retrofit2.Callback
@@ -35,6 +38,11 @@ class FlickrFetchr {
 
     init {
 
+        /**Creating a OkHttpClient Instance and adding PhotoInterceptor as an Interceptor*/
+        val client = OkHttpClient.Builder()
+            .addInterceptor(PhotoInterceptor())
+            .build()
+
         /**
          * Creating a Retrofit Object So that I can make web request based on the API Interface (FlickrApi) I defined
          * */
@@ -44,10 +52,15 @@ class FlickrFetchr {
          * Also Adding a Scalars Converter so that Retrofit can convert OkHttp Objects to Strings Since we return one in our Custom API
          * */
 
+        /**Since we added our New Client Which includes our Interceptor .client(client)
+         * Anytime A Request is Made PhotoInterceptor.intercept will be applied to that request
+         * */
+
         val retrofit: Retrofit = Retrofit.Builder()
             .baseUrl("https://api.flickr.com/")
                 //Now using a Gson Converter Instead of a Scalar Converter
             .addConverterFactory(GsonConverterFactory.create())
+            .client(client) //Adding the Newly Configured client on our Retrofit Instance
             .build()
 
 
@@ -56,6 +69,22 @@ class FlickrFetchr {
         That implements our interface on the fly*/
         flickrApi = retrofit.create(FlickrApi::class.java)
     }
+
+    fun fetchPhotos(): LiveData<List<GalleryItem>>
+    {
+        /**Now we are going to execute a web request and log the results
+         * Using the method we defined in the Interface fetchContents (RetroFit Will create the implementation and return the request
+         * As well as convert it to a string type since we are using Squares Scalar Converter
+         * */
+        return fetchPhotoMetadata(flickrApi.fetchPhotos())
+    }
+
+    fun searchPhotos(query: String) : LiveData<List<GalleryItem>>
+    {
+        return fetchPhotoMetadata(flickrApi.searchPhotos(query))
+    }
+
+
 
     /**Adding a function that fetches the Bytes from a Given URL and decodes them into a Bitmap*/
 
@@ -73,18 +102,12 @@ class FlickrFetchr {
 
 
     /**Enqueues The Network Request and wraps the result in LiveData */
-    fun fetchPhotos(): LiveData<List<GalleryItem>>
+    private fun fetchPhotoMetadata(flickrRequest: Call<FlickrResponse>) : LiveData<List<GalleryItem>>
     {
         //Used to Save the response.body()
         /**Which when the Running Request on the Background Thread is Complete ,
          * Retrofit will store it in response.body() */
         val responseLiveData: MutableLiveData<List<GalleryItem>> = MutableLiveData()
-
-        /**Now we are going to execute a web request and log the results
-         * Using the method we defined in the Interface fetchContents (RetroFit Will create the implementation and return the request
-         * As well as convert it to a string type since we are using Squares Scalar Converter
-         * */
-        val flickrRequest: Call<FlickrResponse> = flickrApi.fetchPhotos()
 
         /**Using a Kotlin anonymous Class To determine when a Failure or a response was received using Log class
          * Call.enqueue() executes the web request represented by the Call object.

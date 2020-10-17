@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    >
+
+    <!--This Item Entry Tells the Toolbar TO Display a SearchView
+    By Specifying the value
+    androidx.appcompat.widget.SearchView
+    -->
+    <item
+        android:id="@+id/menu_item_search"
+        android:title="@string/search"
+        app:actionViewClass="androidx.appcompat.widget.SearchView"
+        app:showAsAction="ifRoom">
+    </item>
+
+    <!--The Second Item will add a Clear Search Option
+    But this option will always display in the overflow menu because you set
+    app:showAsAction to never
+    -->
+    <item
+        android:id="@+id/menu_item_clear"
+        android:title="@string/clear_search"
+        app:showAsAction="never"
+        >
+
+
+    </item>
+
+
+</menu>
