@@ -1,9 +1,21 @@
 package com.bignerdranch.android.photogallery
 
+import android.content.Context
+import android.content.Intent
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 
 class PhotoGalleryActivity : AppCompatActivity() {
+
+    companion object
+    {
+        /**Static Method Used to Return an Intent Instance that can be used to start PhotoGalleryActivity*/
+        fun newIntent(context: Context) : Intent{
+            return Intent(context, PhotoGalleryActivity::class.java)
+        }
+    }
+
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 

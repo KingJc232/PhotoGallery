@@ -18,9 +18,13 @@ import androidx.lifecycle.Observer
 import androidx.lifecycle.ViewModelProviders
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import androidx.work.*
+import java.util.concurrent.TimeUnit
 
 
 private const val TAG = "PhotoGalleryFragment"
+
+private const val POLL_WORK = "POLL_WORK"
 
 class PhotoGalleryFragment : Fragment() {
 
@@ -33,6 +37,7 @@ class PhotoGalleryFragment : Fragment() {
     //Will Be used to reference our Background Thread Which downloads the Pictures From Flicker While Our Main Thread is Handling UI Stuff
     private lateinit var thumbnailDownloader: ThumbnailDownloader<PhotoHolder>
 
+    private var queryPreferences = QueryPreferences()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -68,6 +73,7 @@ class PhotoGalleryFragment : Fragment() {
          * When onDestroy(..) is Called ThumbnailDownloader.tearDown() gets called
          * */
         lifecycle.addObserver(thumbnailDownloader.fragmentLifeCycleObserver)
+
     }
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
@@ -78,10 +84,34 @@ class PhotoGalleryFragment : Fragment() {
                 photoGalleryViewModel.fetchPhotos("")
                 true
             }
+            /**Responds to the Poll toggling by the user
+             * If the worker is not running , Creates a new PeriodicWorkRequest and Schedule it with the Work Manger
+             * If the Worker is Running Stops it
+             * */
+            R.id.menu_item_toggle_polling -> {
+                val isPolling = this.queryPreferences.isPolling(requireContext())
+                if(isPolling)
+                {
+                    WorkManager.getInstance().cancelUniqueWork(POLL_WORK)
+                    this.queryPreferences.setPolling(requireContext(), false)
+                }
+                else
+                {
+                    val constraints = Constraints.Builder()
+                        .setRequiredNetworkType(NetworkType.UNMETERED)
+                        .build()
+                    val periodicRequest = PeriodicWorkRequest.Builder(PollWorker::class.java, 15, TimeUnit.MINUTES)
+                        .setConstraints(constraints)
+                        .build()
+                    WorkManager.getInstance().enqueueUniquePeriodicWork(POLL_WORK, ExistingPeriodicWorkPolicy.KEEP, periodicRequest)
+                    this.queryPreferences.setPolling(requireContext(), true)
+
+                }
+                activity?.invalidateOptionsMenu()
+                return true
+            }
             else -> super.onOptionsItemSelected(item)
         }
-
-
     }
 
     override fun onCreateOptionsMenu(menu: Menu, inflater: MenuInflater) {
@@ -126,6 +156,19 @@ class PhotoGalleryFragment : Fragment() {
                 searchView.setQuery(photoGalleryViewModel.searchTerm, false)
             }
         }
+
+        /**Setting the Correct Title For the Item Menu in the App Bar that allows you to disable or enable The Worker Poller */
+        val toggleItem = menu.findItem(R.id.menu_item_toggle_polling)
+        val isPolling = this.queryPreferences.isPolling(requireContext())
+        val toggleItemTitle = if(isPolling)
+        {
+            R.string.stop_polling
+        }
+        else
+        {
+            R.string.start_polling
+        }
+        toggleItem.setTitle(toggleItemTitle)
 
     }
 

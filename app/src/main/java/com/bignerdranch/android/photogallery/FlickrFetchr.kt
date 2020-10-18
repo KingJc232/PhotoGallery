@@ -29,7 +29,10 @@ import retrofit2.converter.scalars.ScalarsConverterFactory
 private const val TAG = "PhotoGalleryFragment"
 
 
-/**FlickrFetchr Will Wrap Most Of the Networking Code in photo Gallery */
+/**FlickrFetchr Will Wrap Most Of the Networking Code in photo Gallery
+ *
+ * Updating FlickrFetchr To Expose the Retrofit Call objects for OUR Worker To Use
+ * */
 class FlickrFetchr {
 
 
@@ -70,18 +73,31 @@ class FlickrFetchr {
         flickrApi = retrofit.create(FlickrApi::class.java)
     }
 
+    //Exposing the Call Objects to add the queries to PollWorker
+    fun fetchPhotosRequest() :Call<FlickrResponse>
+    {
+        return flickrApi.fetchPhotos()
+    }
+
+
     fun fetchPhotos(): LiveData<List<GalleryItem>>
     {
         /**Now we are going to execute a web request and log the results
          * Using the method we defined in the Interface fetchContents (RetroFit Will create the implementation and return the request
          * As well as convert it to a string type since we are using Squares Scalar Converter
          * */
-        return fetchPhotoMetadata(flickrApi.fetchPhotos())
+
+        return fetchPhotoMetadata(fetchPhotosRequest())
+    }
+    //Exposing the Call Object
+    fun searchPhotoRequest(query: String) : Call<FlickrResponse>
+    {
+        return flickrApi.searchPhotos(query)
     }
 
     fun searchPhotos(query: String) : LiveData<List<GalleryItem>>
     {
-        return fetchPhotoMetadata(flickrApi.searchPhotos(query))
+        return fetchPhotoMetadata(searchPhotoRequest(query))
     }
 
 

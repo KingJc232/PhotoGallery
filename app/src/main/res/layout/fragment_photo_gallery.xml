@@ -10,5 +10,4 @@
     android:id="@+id/photo_recycler_view"
     >
 
-
 </androidx.recyclerview.widget.RecyclerView>
