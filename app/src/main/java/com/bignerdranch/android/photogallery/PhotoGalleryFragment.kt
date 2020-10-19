@@ -26,7 +26,7 @@ private const val TAG = "PhotoGalleryFragment"
 
 private const val POLL_WORK = "POLL_WORK"
 
-class PhotoGalleryFragment : Fragment() {
+class PhotoGalleryFragment : VisibleFragment() {
 
     //Will be used to reference the recycler view in the layout
     private lateinit var photoRecyclerView: RecyclerView

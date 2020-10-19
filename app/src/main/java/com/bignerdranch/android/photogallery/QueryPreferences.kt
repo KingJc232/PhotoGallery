@@ -3,6 +3,7 @@ package com.bignerdranch.android.photogallery
 import android.content.Context
 import android.preference.PreferenceManager
 import android.provider.Settings.Global.putString
+import androidx.core.content.edit
 
 //Used as the key for the query preference
 //you will use this key any time you read or write the query value
@@ -49,7 +50,7 @@ class QueryPreferences
 
     //Function Used to Set the Last Result ID based on the given parameter (lastResultId)
     fun setLastResultId(context: Context, lastResultId: String) {
-        PreferenceManager.getDefaultSharedPreferences(context).edit().putString(PREF_LAST_RESULT_ID, lastResultId)
+        PreferenceManager.getDefaultSharedPreferences(context).edit {putString(PREF_LAST_RESULT_ID, lastResultId)}
 
     }
 
@@ -63,7 +64,7 @@ class QueryPreferences
 
     fun setPolling(context: Context, isOn : Boolean)
     {
-        PreferenceManager.getDefaultSharedPreferences(context).edit().putBoolean(PREF_IS_POLLING, isOn)
+        PreferenceManager.getDefaultSharedPreferences(context).edit { putBoolean(PREF_IS_POLLING, isOn) }
     }
 }
 
