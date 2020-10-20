@@ -29,6 +29,10 @@
             </intent-filter>
         </activity>
 
+        <activity android:name=".PhotoPageActivity"
+            android:configChanges="keyboardHidden|orientation|screenSize"
+            ></activity>
+
         <receiver
             android:name=".NotificationReceiver"
             android:permission="com.bignerdranch.android.photogallery.PRIVATE"

@@ -7,6 +7,7 @@ import android.os.Bundle
 import android.os.Handler
 import android.util.Log
 import android.view.*
+import android.widget.Gallery
 import android.widget.ImageView
 
 import android.widget.TextView
@@ -251,9 +252,28 @@ class PhotoGalleryFragment : VisibleFragment() {
     /**Every Recycler View Needs a Holder and a Adapter Class*/
 
     /**Updating PhotoHolder to use a Image View Instead of a Text View So that we can display our pictures downloaded from Flickr*/
-    private class PhotoHolder(private val itemImageView: ImageView) : RecyclerView.ViewHolder(itemImageView)
+    private inner class PhotoHolder(private val itemImageView: ImageView) : RecyclerView.ViewHolder(itemImageView), View.OnClickListener
     {
+        private lateinit var galleryItem: GalleryItem
+
+        init {
+            itemView.setOnClickListener(this)
+        }
+
         val bindDrawable: (Drawable) -> Unit = itemImageView::setImageDrawable
+
+        fun bindGalleryItem(item: GalleryItem)
+        {
+            galleryItem = item
+        }
+
+        override fun onClick(view: View)
+        {
+            val intent = PhotoPageActivity
+                .newIntent(requireContext(), galleryItem.photoPageUri)
+            startActivity(intent)
+        }
+
     }
 
     /**Adapter used to provide PhotoHolders as needed based on a list of GalleryItems
@@ -280,6 +300,9 @@ class PhotoGalleryFragment : VisibleFragment() {
         override fun onBindViewHolder(holder: PhotoHolder, position: Int) {
 
             val galleryItem = galleryItems[position]
+
+            holder.bindGalleryItem(galleryItem)
+
             //Using a Temp Picture until we download the pictures
             val placeholder: Drawable = ContextCompat.getDrawable(
                 requireContext(),
